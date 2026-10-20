@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "symbol": "0210E0",
+  "name": "PLUS 200커버드콜액티브",
+  "sourceURL": "https://www.plusetf.co.kr/product/detail?n=006407",
+  "fetchedAt": "2026-10-20T02:08:01.434738+00:00",
+  "sourceSHA256": "92c254f8327623c3e6caefc207ee2ceb9ed0b3d47539f5be295210b0c097b6fb",
+  "coverage": "available-source-rows",
+  "rows": [
+    {
+      "recordDate": "2026-09-30",
+      "paidAt": "2026-10-02",
+      "payment": "152",
+      "taxBase": "0"
+    },
+    {
+      "recordDate": "2026-08-31",
+      "paidAt": "2026-09-02",
+      "payment": "147",
+      "taxBase": "0"
+    },
+    {
+      "recordDate": "2026-07-31",
+      "paidAt": "2026-08-04",
+      "payment": "139",
+      "taxBase": "0"
+    }
+  ]
+}
