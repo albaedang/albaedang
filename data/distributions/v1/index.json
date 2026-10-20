@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "status": "pilot",
+  "products": [
+    {
+      "symbol": "0210E0",
+      "name": "PLUS 200커버드콜액티브",
+      "path": "0210E0.json"
+    }
+  ],
+  "pending": [
+    {
+      "symbol": "148020",
+      "name": "RISE 200",
+      "reason": "source-unavailable"
+    }
+  ]
+}
