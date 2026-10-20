@@ -1,0 +1,35 @@
+name: Refresh published distributions
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 5 * * 1-5'
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: distribution-feed
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate collector
+        run: python -m unittest discover -s services/distributions/tests -v
+      - name: Collect PLUS pilot
+        run: python services/distributions/collect.py --symbol 0210E0 --output data/distributions/v1/0210E0.json
+      - name: Publish validated snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- data/distributions/v1/0210E0.json; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/distributions/v1/0210E0.json
+          git commit -m 'Refresh verified PLUS distribution snapshot'
+          git push
+          gh api --method POST repos/${{ github.repository }}/pages/builds
