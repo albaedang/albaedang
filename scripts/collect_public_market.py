@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import time
 from urllib.parse import unquote, urlencode
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 from urllib.error import HTTPError, URLError
@@ -39,16 +40,21 @@ class API:
         params = dict(serviceKey=self.key, resultType='json', numOfRows=1000, pageNo=1, **{})
         params.update(filters)
         request = Request(BASE + ENDPOINTS[kind] + '?' + urlencode(params))
-        try:
-            with build_opener(NoRedirect).open(request, timeout=45) as response:
-                raw = response.read(5_000_001)
-            if len(raw) > 5_000_000:
-                raise ValueError('응답 크기 초과')
-            data = json.loads(raw)
-        except HTTPError as error:
-            raise ValueError(f'{kind}: HTTP {error.code}') from None
-        except (URLError, TimeoutError, OSError, json.JSONDecodeError):
-            raise ValueError(f'{kind}: 네트워크 또는 JSON 응답 오류') from None
+        for attempt in range(3):
+            try:
+                with build_opener(NoRedirect).open(request, timeout=45) as response:
+                    raw = response.read(5_000_001)
+                if len(raw) > 5_000_000:
+                    raise ValueError('응답 크기 초과')
+                data = json.loads(raw)
+                break
+            except HTTPError as error:
+                if error.code not in (408, 429, 500, 502, 503, 504) or attempt == 2:
+                    raise ValueError(f'{kind}: HTTP {error.code}') from None
+            except (URLError, TimeoutError, OSError, json.JSONDecodeError):
+                if attempt == 2:
+                    raise ValueError(f'{kind}: 네트워크 또는 JSON 응답 오류') from None
+            time.sleep(2 ** attempt)
         response = data.get('response', {})
         header = response.get('header', {})
         if header.get('resultCode') != '00':
@@ -134,7 +140,13 @@ def collect(api, output, dividends=False):
     dividend_files = {}
     dividend_day = None
     if dividends:
-        dividend_day, rows = latest_rows(api, 'dividend')
+        try:
+            dividend_day, rows = latest_rows(api, 'dividend')
+        except ValueError:
+            if not (output / 'dividends/index.json').exists():
+                raise  # Initial publication must include a valid dividend snapshot.
+            rows = []
+            print('::warning::기업 배당 수집 실패: 기존 배당자료를 유지하고 정상 종목 목록만 갱신합니다.', file=sys.stderr)
         for row in rows:
             isin = row.get('isinCd', '')
             if not re.fullmatch('[A-Z0-9]{12}', isin):
@@ -147,7 +159,7 @@ def collect(api, output, dividends=False):
     for isin, records in dividend_files.items():
         write_json(output / 'dividends' / (isin + '.json'), dict(schemaVersion=1, asOf=dividend_day,
             source=SOURCES['dividend'], isin=isin, records=records))
-    if dividends:
+    if dividend_day is not None:
         write_json(output / 'dividends/index.json', dict(schemaVersion=1, asOf=dividend_day,
             source=SOURCES['dividend'], securities=sorted(dividend_files)))
     write_json(output / 'catalog.json', snapshot)
